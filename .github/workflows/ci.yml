@@ -1,0 +1,55 @@
+# Continuous integration: install deps, migrate the test DB, run the full suite.
+# Lint / format / type-check are intentionally not part of this quality gate.
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    # Shared by Alembic and pytest so both talk to the service container below.
+    env:
+      DATABASE_URL: postgresql+psycopg://postgres:postgres@localhost:5432/financial_assessment_test
+      TEST_DATABASE_URL: postgresql+psycopg://postgres:postgres@localhost:5432/financial_assessment_test
+
+    # Ephemeral Postgres for integration tests and migration runs.
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: financial_assessment_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d financial_assessment_test"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.13
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: pip
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      # Apply schema via Alembic (DATABASE_URL overrides alembic.ini).
+      - name: Run database migrations
+        run: alembic upgrade head
+
+      # Non-zero exit from pytest fails the job and blocks merge / main pushes.
+      - name: Run tests
+        run: pytest
