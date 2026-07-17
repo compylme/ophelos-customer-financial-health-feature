@@ -7,6 +7,7 @@ Repository integration tests require a separate Postgres database (run once):
 
 from __future__ import annotations
 
+import os
 from collections.abc import Callable, Iterator
 from datetime import UTC, date, datetime
 from decimal import Decimal
@@ -28,8 +29,10 @@ from app.repositories.snapshot_repository import SnapshotRepository
 from app.schemas.financial_health import FinancialItemInput, SubmitSnapshotRequest
 
 # Separate DB on the same Postgres instance — never points at the dev database.
-TEST_DATABASE_URL = (
-    "postgresql+psycopg://admin@localhost:5432/financial_assessment_test"
+# Override via TEST_DATABASE_URL for CI or non-local Postgres.
+TEST_DATABASE_URL = os.environ.get(
+    "TEST_DATABASE_URL",
+    "postgresql+psycopg://admin@localhost:5432/financial_assessment_test",
 )
 
 
