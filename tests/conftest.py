@@ -1,6 +1,6 @@
-"""Repository integration test fixtures.
+"""Shared test fixtures for unit and integration tests.
 
-Prerequisite (run once against the local Postgres instance):
+Repository integration tests require a separate Postgres database (run once):
 
     CREATE DATABASE financial_assessment_test;
 """
@@ -10,7 +10,7 @@ from __future__ import annotations
 from collections.abc import Callable, Iterator
 from datetime import UTC, date, datetime
 from decimal import Decimal
-from uuid import uuid4
+from uuid import UUID, uuid4
 
 import pytest
 from sqlalchemy import Engine, create_engine
@@ -25,6 +25,7 @@ from app.models.models import (
     User,
 )
 from app.repositories.snapshot_repository import SnapshotRepository
+from app.schemas.financial_health import FinancialItemInput, SubmitSnapshotRequest
 
 # Separate DB on the same Postgres instance — never points at the dev database.
 TEST_DATABASE_URL = (
@@ -90,6 +91,51 @@ def financial_item_factory() -> Callable[..., FinancialItem]:
             direction=direction,
             description=description,
             amount=amount,
+        )
+
+    return _create
+
+
+@pytest.fixture
+def financial_item_input_factory() -> Callable[..., FinancialItemInput]:
+    def _create(
+        direction: Direction = Direction.INCOME,
+        description: str = "Salary",
+        amount: Decimal = Decimal("2500.00"),
+    ) -> FinancialItemInput:
+        return FinancialItemInput(
+            direction=direction,
+            description=description,
+            amount=amount,
+        )
+
+    return _create
+
+
+@pytest.fixture
+def submit_snapshot_request_factory(
+    financial_item_input_factory: Callable[..., FinancialItemInput],
+) -> Callable[..., SubmitSnapshotRequest]:
+    def _create(
+        user_id: UUID | None = None,
+        items: list[FinancialItemInput] | None = None,
+    ) -> SubmitSnapshotRequest:
+        if items is None:
+            items = [
+                financial_item_input_factory(
+                    direction=Direction.INCOME,
+                    description="Salary",
+                    amount=Decimal("2500.00"),
+                ),
+                financial_item_input_factory(
+                    direction=Direction.EXPENSE,
+                    description="Rent",
+                    amount=Decimal("1500.00"),
+                ),
+            ]
+        return SubmitSnapshotRequest(
+            user_id=user_id or uuid4(),
+            items=items,
         )
 
     return _create
