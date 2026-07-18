@@ -133,7 +133,7 @@ class MonthlyAssessment(TimestampMixin, Base):
     total_income: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False)
     total_expenditure: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False)
     disposable_income: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False)
-    assessment: Mapped[str] = mapped_column(String, nullable=False)
+    status: Mapped[str] = mapped_column(String, nullable=False)
     explanation: Mapped[str] = mapped_column(Text, nullable=False)
 
     snapshot: Mapped["MonthlySnapshot"] = relationship(back_populates="assessment")
