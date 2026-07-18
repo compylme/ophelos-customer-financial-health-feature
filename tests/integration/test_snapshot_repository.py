@@ -189,7 +189,7 @@ class TestGetByPeriod:
         )
         assert result is not None
         assert result.assessment is not None
-        assert result.assessment.assessment == "HEALTHY"
+        assert result.assessment.status == "HEALTHY"
 
         # Expire the session so subsequent attribute access would trigger a lazy load
         # if the relationship were not already eagerly loaded.

@@ -90,7 +90,7 @@ class FinancialHealthService:
                 total_income=assessment_result.total_income,
                 total_expenditure=assessment_result.total_expenditure,
                 disposable_income=assessment_result.disposable_income,
-                assessment=assessment_result.status.value,
+                status=assessment_result.status.value,
                 explanation=assessment_result.explanation,
             ),
         )

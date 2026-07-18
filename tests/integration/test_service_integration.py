@@ -74,7 +74,7 @@ class TestSubmitSnapshot:
         assert assessments[0].total_income == Decimal("2500.00")
         assert assessments[0].total_expenditure == Decimal("1500.00")
         assert assessments[0].disposable_income == Decimal("1000.00")
-        assert assessments[0].assessment == "HEALTHY"
+        assert assessments[0].status == "HEALTHY"
 
     def test_returned_snapshot_matches_persisted_data(
         self,
@@ -116,7 +116,7 @@ class TestSubmitSnapshot:
             reloaded.assessment.disposable_income
             == returned.assessment.disposable_income
         )
-        assert reloaded.assessment.assessment == returned.assessment.assessment
+        assert reloaded.assessment.status == returned.assessment.status
         assert reloaded.assessment.explanation == returned.assessment.explanation
 
     def test_rollback_on_commit_failure_leaves_no_partial_state(
@@ -163,7 +163,7 @@ class TestGetSnapshot:
         assert result.assessment.total_income == Decimal("2500.00")
         assert result.assessment.total_expenditure == Decimal("1500.00")
         assert result.assessment.disposable_income == Decimal("1000.00")
-        assert result.assessment.assessment == "HEALTHY"
+        assert result.assessment.status == "HEALTHY"
 
         assert len(result.financial_items) == 2
         items_by_direction = {item.direction: item for item in result.financial_items}

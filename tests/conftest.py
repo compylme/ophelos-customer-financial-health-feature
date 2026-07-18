@@ -150,7 +150,7 @@ def assessment_factory() -> Callable[..., MonthlyAssessment]:
         total_income: Decimal = Decimal("2500.00"),
         total_expenditure: Decimal = Decimal("1500.00"),
         disposable_income: Decimal | None = None,
-        assessment: str = "HEALTHY",
+        status: str = "HEALTHY",
         explanation: str = "Test explanation",
     ) -> MonthlyAssessment:
         if disposable_income is None:
@@ -159,7 +159,7 @@ def assessment_factory() -> Callable[..., MonthlyAssessment]:
             total_income=total_income,
             total_expenditure=total_expenditure,
             disposable_income=disposable_income,
-            assessment=assessment,
+            status=status,
             explanation=explanation,
         )
 
