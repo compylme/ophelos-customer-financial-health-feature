@@ -171,7 +171,7 @@ class TestSubmitSnapshot:
         assert assessment is not None
         assert assessment.status == "DEFICIT"
         assert assessment.disposable_income == Decimal("-500.00")
-        assert "exceeds your total income" in assessment.explanation
+        assert "exceeding your income by" in assessment.explanation
         assert result.assessment is not None
         assert result.assessment.status == "DEFICIT"
 

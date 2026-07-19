@@ -151,7 +151,7 @@ class TestCalculateAssessment:
             _items(financial_item_input_factory, Decimal("1000"), Decimal("1500"))
         )
         assert result.status == AffordabilityStatus.DEFICIT
-        assert "exceeds your total income" in result.explanation
+        assert "exceeding your income by" in result.explanation
 
     def test_break_even_status(
         self,
@@ -299,19 +299,19 @@ class TestCalculateAssessment:
         )
 
         assert deficit.status == AffordabilityStatus.DEFICIT
-        assert "exceeds your total income" in deficit.explanation
+        assert "exceeding your income by" in deficit.explanation
 
         assert break_even.status == AffordabilityStatus.BREAK_EVEN
         assert "no surplus" in break_even.explanation
 
         assert critical.status == AffordabilityStatus.CRITICAL
-        assert "immediate attention" in critical.explanation
+        assert "small portion" in critical.explanation
 
         assert manageable.status == AffordabilityStatus.MANAGEABLE
-        assert "some room for flexibility" in manageable.explanation
+        assert "moderate portion" in manageable.explanation
 
         assert healthy.status == AffordabilityStatus.HEALTHY
-        assert "healthy balance" in healthy.explanation
+        assert "substantial portion" in healthy.explanation
 
     def test_income_only_items(
         self,
@@ -445,7 +445,7 @@ class TestSubmitSnapshot:
         assert snapshot.assessment.total_expenditure == Decimal("1500.00")
         assert snapshot.assessment.disposable_income == Decimal("1000.00")
         assert snapshot.assessment.status == AffordabilityStatus.HEALTHY.value
-        assert "healthy balance" in snapshot.assessment.explanation
+        assert "substantial portion" in snapshot.assessment.explanation
 
     def test_commits_on_success(
         self,

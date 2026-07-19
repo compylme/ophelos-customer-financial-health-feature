@@ -33,9 +33,9 @@ _EXPLANATION_TEMPLATES: dict[AffordabilityStatus, str] = {
     AffordabilityStatus.DEFICIT: (
         "Based on the financial information provided, your total monthly income"
         " is {total_income} and your total monthly expenditure is"
-        " {total_expenditure}. This leaves a disposable income of"
-        " {disposable_income}, which represents {ratio}% of your income."
-        " Your total expenditure currently exceeds your total income."
+        " {total_expenditure}. This results in a shortfall of"
+        " {disposable_income}, with your expenditure exceeding your income by"
+        " {shortfall_percentage}%."
     ),
     AffordabilityStatus.BREAK_EVEN: (
         "Based on the financial information provided, your total monthly income"
@@ -51,24 +51,24 @@ _EXPLANATION_TEMPLATES: dict[AffordabilityStatus, str] = {
         " {total_expenditure}. This leaves a disposable income of"
         " {disposable_income}, which represents {ratio}% of your income."
         " This indicates that your current financial position may require"
-        " immediate attention, as your spending is consuming most"
-        " of your income."
+        " Only a small portion of your reported income remains after your"
+        " monthly expenditure."
     ),
     AffordabilityStatus.MANAGEABLE: (
         "Based on the financial information provided, your total monthly income"
         " is {total_income} and your total monthly expenditure is"
         " {total_expenditure}. This leaves a disposable income of"
         " {disposable_income}, which represents {ratio}% of your income."
-        " Your financial position shows some room for flexibility, though"
-        " there may be limited capacity to absorb unexpected costs."
+        " A moderate portion of your reported income remains after your monthly"
+        " expenditure."
     ),
     AffordabilityStatus.HEALTHY: (
         "Based on the financial information provided, your total monthly income"
         " is {total_income} and your total monthly expenditure is"
         " {total_expenditure}. This leaves a disposable income of"
         " {disposable_income}, which represents {ratio}% of your income."
-        " Your financial position indicates a healthy balance between income"
-        " and expenditure, with capacity to manage variability in costs."
+        " A substantial portion of your reported income remains after your"
+        " monthly expenditure."
     ),
 }
 
@@ -160,12 +160,17 @@ class FinancialHealthService:
             status = AffordabilityStatus.HEALTHY
 
         ratio_percentage = (disposable_income_ratio * 100).quantize(Decimal("0.1"))
+        if total_income > 0:
+            shortfall_percentage = (disposable_income / total_income * 100).quantize(Decimal("0.1"))
+        else:
+            shortfall_percentage = Decimal("0.0")
 
         explanation = _EXPLANATION_TEMPLATES[status].format(
             total_income=total_income,
             total_expenditure=total_expenditure,
             disposable_income=disposable_income,
             ratio=ratio_percentage,
+            shortfall_percentage=shortfall_percentage,
         )
 
         return AssessmentResult(
