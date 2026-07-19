@@ -9,6 +9,8 @@ from app.models.models import Direction
 
 
 class AffordabilityStatus(enum.Enum):
+    DEFICIT = "DEFICIT"
+    BREAK_EVEN = "BREAK_EVEN"
     CRITICAL = "CRITICAL"
     MANAGEABLE = "MANAGEABLE"
     HEALTHY = "HEALTHY"

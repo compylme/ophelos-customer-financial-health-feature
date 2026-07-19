@@ -107,7 +107,7 @@ class TestCalculateAssessment:
         assert result.status == AffordabilityStatus.CRITICAL
         assert result.disposable_income_ratio == Decimal("0.08")
 
-    def test_critical_when_disposable_income_is_zero(
+    def test_break_even_when_disposable_income_is_zero(
         self,
         service: FinancialHealthService,
         financial_item_input_factory: Callable[..., FinancialItemInput],
@@ -115,10 +115,10 @@ class TestCalculateAssessment:
         result = service.calculate_assessment(
             _items(financial_item_input_factory, Decimal("1000"), Decimal("1000"))
         )
-        assert result.status == AffordabilityStatus.CRITICAL
+        assert result.status == AffordabilityStatus.BREAK_EVEN
         assert result.disposable_income == Decimal("0")
 
-    def test_critical_when_disposable_income_is_negative(
+    def test_deficit_when_disposable_income_is_negative(
         self,
         service: FinancialHealthService,
         financial_item_input_factory: Callable[..., FinancialItemInput],
@@ -126,10 +126,10 @@ class TestCalculateAssessment:
         result = service.calculate_assessment(
             _items(financial_item_input_factory, Decimal("1000"), Decimal("1500"))
         )
-        assert result.status == AffordabilityStatus.CRITICAL
+        assert result.status == AffordabilityStatus.DEFICIT
         assert result.disposable_income == Decimal("-500")
 
-    def test_critical_when_zero_income(
+    def test_deficit_when_zero_income(
         self,
         service: FinancialHealthService,
         financial_item_input_factory: Callable[..., FinancialItemInput],
@@ -138,9 +138,54 @@ class TestCalculateAssessment:
         result = service.calculate_assessment(
             _items(financial_item_input_factory, Decimal("0"), Decimal("500"))
         )
-        assert result.status == AffordabilityStatus.CRITICAL
+        assert result.status == AffordabilityStatus.DEFICIT
         assert result.total_income == Decimal("0")
         assert result.disposable_income_ratio == Decimal("0")
+
+    def test_deficit_status(
+        self,
+        service: FinancialHealthService,
+        financial_item_input_factory: Callable[..., FinancialItemInput],
+    ) -> None:
+        result = service.calculate_assessment(
+            _items(financial_item_input_factory, Decimal("1000"), Decimal("1500"))
+        )
+        assert result.status == AffordabilityStatus.DEFICIT
+        assert "exceeding your income by" in result.explanation
+
+    def test_break_even_status(
+        self,
+        service: FinancialHealthService,
+        financial_item_input_factory: Callable[..., FinancialItemInput],
+    ) -> None:
+        result = service.calculate_assessment(
+            _items(financial_item_input_factory, Decimal("1000"), Decimal("1000"))
+        )
+        assert result.status == AffordabilityStatus.BREAK_EVEN
+        assert "no surplus" in result.explanation
+
+    def test_deficit_explanation_contains_figures(
+        self,
+        service: FinancialHealthService,
+        financial_item_input_factory: Callable[..., FinancialItemInput],
+    ) -> None:
+        result = service.calculate_assessment(
+            _items(financial_item_input_factory, Decimal("1000"), Decimal("1500"))
+        )
+        assert "1000" in result.explanation
+        assert "1500" in result.explanation
+        assert "-500" in result.explanation
+
+    def test_break_even_explanation_contains_figures(
+        self,
+        service: FinancialHealthService,
+        financial_item_input_factory: Callable[..., FinancialItemInput],
+    ) -> None:
+        result = service.calculate_assessment(
+            _items(financial_item_input_factory, Decimal("1000"), Decimal("1000"))
+        )
+        assert "1000" in result.explanation
+        assert "0" in result.explanation
 
     def test_exactly_ten_percent_is_manageable(
         self,
@@ -237,8 +282,14 @@ class TestCalculateAssessment:
         service: FinancialHealthService,
         financial_item_input_factory: Callable[..., FinancialItemInput],
     ) -> None:
-        critical = service.calculate_assessment(
+        deficit = service.calculate_assessment(
+            _items(financial_item_input_factory, Decimal("1000"), Decimal("1500"))
+        )
+        break_even = service.calculate_assessment(
             _items(financial_item_input_factory, Decimal("1000"), Decimal("1000"))
+        )
+        critical = service.calculate_assessment(
+            _items(financial_item_input_factory, Decimal("1000"), Decimal("920"))
         )
         manageable = service.calculate_assessment(
             _items(financial_item_input_factory, Decimal("1000"), Decimal("800"))
@@ -247,14 +298,20 @@ class TestCalculateAssessment:
             _items(financial_item_input_factory, Decimal("2500"), Decimal("1500"))
         )
 
+        assert deficit.status == AffordabilityStatus.DEFICIT
+        assert "exceeding your income by" in deficit.explanation
+
+        assert break_even.status == AffordabilityStatus.BREAK_EVEN
+        assert "no surplus" in break_even.explanation
+
         assert critical.status == AffordabilityStatus.CRITICAL
-        assert "immediate attention" in critical.explanation
+        assert "small portion" in critical.explanation
 
         assert manageable.status == AffordabilityStatus.MANAGEABLE
-        assert "some room for flexibility" in manageable.explanation
+        assert "moderate portion" in manageable.explanation
 
         assert healthy.status == AffordabilityStatus.HEALTHY
-        assert "healthy balance" in healthy.explanation
+        assert "substantial portion" in healthy.explanation
 
     def test_income_only_items(
         self,
@@ -388,7 +445,7 @@ class TestSubmitSnapshot:
         assert snapshot.assessment.total_expenditure == Decimal("1500.00")
         assert snapshot.assessment.disposable_income == Decimal("1000.00")
         assert snapshot.assessment.status == AffordabilityStatus.HEALTHY.value
-        assert "healthy balance" in snapshot.assessment.explanation
+        assert "substantial portion" in snapshot.assessment.explanation
 
     def test_commits_on_success(
         self,
@@ -537,7 +594,7 @@ class TestEdgeCases:
         assert result.total_expenditure == Decimal("500")
         assert result.disposable_income == Decimal("-500")
         assert result.disposable_income_ratio == Decimal("0")
-        assert result.status == AffordabilityStatus.CRITICAL
+        assert result.status == AffordabilityStatus.DEFICIT
 
     def test_single_item_submission(
         self,
