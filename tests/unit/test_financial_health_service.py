@@ -387,7 +387,7 @@ class TestSubmitSnapshot:
         assert snapshot.assessment.total_income == Decimal("2500.00")
         assert snapshot.assessment.total_expenditure == Decimal("1500.00")
         assert snapshot.assessment.disposable_income == Decimal("1000.00")
-        assert snapshot.assessment.assessment == AffordabilityStatus.HEALTHY.value
+        assert snapshot.assessment.status == AffordabilityStatus.HEALTHY.value
         assert "healthy balance" in snapshot.assessment.explanation
 
     def test_commits_on_success(

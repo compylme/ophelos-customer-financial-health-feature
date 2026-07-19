@@ -3,6 +3,8 @@ class DomainError(Exception):
         self.message = message
         super().__init__(message)
 
+class UserNotFound(DomainError):
+    pass
 
 class SnapshotAlreadyExists(DomainError):
     pass
