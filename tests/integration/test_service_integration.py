@@ -22,7 +22,7 @@ from app.models.models import (
     MonthlySnapshot,
     User,
 )
-from app.schemas.financial_health import SubmitSnapshotRequest
+from app.schemas.financial_health import FinancialItemInput, SubmitSnapshotRequest
 from app.services.financial_health_service import FinancialHealthService
 
 
@@ -136,6 +136,44 @@ class TestSubmitSnapshot:
         assert (
             db_session.scalar(select(func.count()).select_from(MonthlyAssessment)) == 0
         )
+
+    def test_deficit_assessment_persists_correctly(
+        self,
+        service: FinancialHealthService,
+        db_session: Session,
+        persisted_user: User,
+        submit_snapshot_request_factory: Callable[..., SubmitSnapshotRequest],
+        financial_item_input_factory: Callable[..., FinancialItemInput],
+    ) -> None:
+        request = submit_snapshot_request_factory(
+            user_id=persisted_user.id,
+            items=[
+                financial_item_input_factory(
+                    direction=Direction.INCOME,
+                    description="Salary",
+                    amount=Decimal("1000.00"),
+                ),
+                financial_item_input_factory(
+                    direction=Direction.EXPENSE,
+                    description="Rent",
+                    amount=Decimal("1500.00"),
+                ),
+            ],
+        )
+
+        result = service.submit_snapshot(request)
+
+        assessment = db_session.scalar(
+            select(MonthlyAssessment).where(
+                MonthlyAssessment.snapshot_id == result.id
+            )
+        )
+        assert assessment is not None
+        assert assessment.status == "DEFICIT"
+        assert assessment.disposable_income == Decimal("-500.00")
+        assert "exceeds your total income" in assessment.explanation
+        assert result.assessment is not None
+        assert result.assessment.status == "DEFICIT"
 
 
 # ---------------------------------------------------------------------------

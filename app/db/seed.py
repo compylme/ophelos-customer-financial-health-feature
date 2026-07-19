@@ -124,7 +124,7 @@ _MONTHLY_ITEMS: list[list[FinancialItemInput]] = [
             amount=Decimal("250.00"),
         ),
     ],
-    # Month 5 — MANAGEABLE (~15% disposable)
+    # Month 5 — BREAK_EVEN (income equals expenditure)
     [
         FinancialItemInput(
             direction=Direction.INCOME, description="Salary", amount=Decimal("3200.00")
@@ -135,17 +135,17 @@ _MONTHLY_ITEMS: list[list[FinancialItemInput]] = [
         FinancialItemInput(
             direction=Direction.EXPENSE,
             description="Groceries",
-            amount=Decimal("550.00"),
+            amount=Decimal("800.00"),
         ),
         FinancialItemInput(
             direction=Direction.EXPENSE,
             description="Transport",
-            amount=Decimal("280.00"),
+            amount=Decimal("600.00"),
         ),
         FinancialItemInput(
             direction=Direction.EXPENSE,
             description="Subscriptions",
-            amount=Decimal("280.00"),
+            amount=Decimal("600.00"),
         ),
     ],
     # Month 6 — CRITICAL (income drop, ~5% disposable)
@@ -172,7 +172,7 @@ _MONTHLY_ITEMS: list[list[FinancialItemInput]] = [
             amount=Decimal("180.00"),
         ),
     ],
-    # Month 7 — CRITICAL (negative disposable)
+    # Month 7 — DEFICIT (expenditure exceeds income)
     [
         FinancialItemInput(
             direction=Direction.INCOME, description="Salary", amount=Decimal("2200.00")

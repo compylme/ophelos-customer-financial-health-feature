@@ -30,14 +30,29 @@ CRITICAL_THRESHOLD = Decimal("0.10")
 MANAGEABLE_THRESHOLD = Decimal("0.25")
 
 _EXPLANATION_TEMPLATES: dict[AffordabilityStatus, str] = {
+    AffordabilityStatus.DEFICIT: (
+        "Based on the financial information provided, your total monthly income"
+        " is {total_income} and your total monthly expenditure is"
+        " {total_expenditure}. This leaves a disposable income of"
+        " {disposable_income}, which represents {ratio}% of your income."
+        " Your total expenditure currently exceeds your total income."
+    ),
+    AffordabilityStatus.BREAK_EVEN: (
+        "Based on the financial information provided, your total monthly income"
+        " is {total_income} and your total monthly expenditure is"
+        " {total_expenditure}. This leaves a disposable income of"
+        " {disposable_income}, which represents {ratio}% of your income."
+        " Your income and expenditure are currently equal, leaving"
+        " no surplus for the month."
+    ),
     AffordabilityStatus.CRITICAL: (
         "Based on the financial information provided, your total monthly income"
         " is {total_income} and your total monthly expenditure is"
         " {total_expenditure}. This leaves a disposable income of"
         " {disposable_income}, which represents {ratio}% of your income."
         " This indicates that your current financial position may require"
-        " immediate attention, as your essential spending is consuming most"
-        " or all of your income."
+        " immediate attention, as your spending is consuming most"
+        " of your income."
     ),
     AffordabilityStatus.MANAGEABLE: (
         "Based on the financial information provided, your total monthly income"
@@ -133,7 +148,11 @@ class FinancialHealthService:
         else:
             disposable_income_ratio = Decimal("0")
 
-        if disposable_income <= 0 or disposable_income_ratio < CRITICAL_THRESHOLD:
+        if disposable_income < 0:
+            status = AffordabilityStatus.DEFICIT
+        elif disposable_income == 0:
+            status = AffordabilityStatus.BREAK_EVEN
+        elif disposable_income_ratio < CRITICAL_THRESHOLD:
             status = AffordabilityStatus.CRITICAL
         elif disposable_income_ratio < MANAGEABLE_THRESHOLD:
             status = AffordabilityStatus.MANAGEABLE
