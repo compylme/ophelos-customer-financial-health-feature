@@ -16,12 +16,6 @@ def get_db_session() -> Iterator[Session]:
         session.close()
 
 
-def get_repository(
-    session: Session = Depends(get_db_session),
-) -> SnapshotRepository:
-    return SnapshotRepository(session)
-
-
 def get_financial_health_service(
     session: Session = Depends(get_db_session),
 ) -> FinancialHealthService:
