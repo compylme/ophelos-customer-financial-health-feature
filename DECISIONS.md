@@ -24,6 +24,16 @@
 - Affordability assessment:
     - As the brief did not define an affordability algorithm, for the purposes of this exercise I implemented a simple, deterministic rule-based assessment based on disposable income as a percentage of income
 
+- Currency handling:
+   - The api currently supports 3 currencies: GBP, EUR and USD.
+   - In a production environment, the user would be able to select their preferred currency from a list of supported currencies during user onboarding
+   - When snapshots are generated, the currency is derived from the user's preferred currency
+   - In line with the snapshot's immutable nature, the currency is not allowed to be changed after the snapshot is generated
+
+- Frontend demo page:
+    - A simple html/css demo page to help demonstrate the API in action.
+    - The page allows you to submit a new snapshot for the current month and view the history of snapshots for the demo user.
+
 **What was left out and what would be built next**
 - Implement secure statement sharing via a time-limited link
 - Generate a PDF export of the statement with appropriate branding
@@ -48,8 +58,7 @@
 
 - Frontend implementation:
     I deliberately prioritised the assessment domain, persistence model, API
-    contract and automated tests over building a separate frontend within the
-    available time.
+    contract and automated tests over building a complex frontend within the available time.
 
     The REST API and Swagger UI provide a complete demonstrable workflow, while
     keeping the solution within the application types explicitly permitted by the
