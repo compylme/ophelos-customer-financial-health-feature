@@ -4,6 +4,8 @@ A REST API that lets users submit monthly financial snapshots (income and expens
 
 Currency and country are user preferences. Supported combinations are `GB`/`GBP`, `FR`/`EUR`, and `US`/`USD`. The client does not send currency when submitting a snapshot — the service reads it from the user and stamps it onto the snapshot and assessment. Explanation amounts are formatted with the user's preferred currency symbol (for example `£2,500.00`). Historical snapshots keep the currency they were created with; changing a user's preference affects future submissions only. Financial items have no currency column — currency is taken from the parent snapshot at runtime.
 
+Note: The LLM prompt transcripts are available in the [`prompts`](./prompts/) folder starting with[`prompts_part1.md`](./prompts/prompts_part1.md).
+
 ## Technologies
 
 - **FastAPI** — HTTP API and dependency injection
