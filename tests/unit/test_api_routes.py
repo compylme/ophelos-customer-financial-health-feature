@@ -9,7 +9,7 @@ from uuid import UUID, uuid4
 from fastapi.testclient import TestClient
 
 from app.exceptions import SnapshotAlreadyExists, SnapshotNotFound
-from app.models.models import Direction, MonthlySnapshot
+from app.models.models import MonthlySnapshot
 from app.schemas.financial_health import SnapshotResponse
 
 
@@ -49,7 +49,6 @@ class TestSubmitSnapshot:
         assert body.user_id == sample_snapshot.user_id
         assert body.period == sample_snapshot.period
         assert body.submitted_at == sample_snapshot.submitted_at
-        assert len(body.financial_items) == 2
         assert body.assessment is not None
         assert body.assessment.status.value == "HEALTHY"
         assert body.assessment.total_income == Decimal("2500.00")
@@ -299,7 +298,7 @@ class TestGetSnapshot:
         assert response.status_code == 200
         SnapshotResponse.model_validate(response.json())
 
-    def test_response_contains_financial_items_and_assessment(
+    def test_response_contains_assessment(
         self,
         client: TestClient,
         mock_service: MagicMock,
@@ -312,13 +311,6 @@ class TestGetSnapshot:
         )
         body = SnapshotResponse.model_validate(response.json())
 
-        assert len(body.financial_items) == 2
-        assert body.financial_items[0].id == sample_snapshot.financial_items[0].id
-        assert body.financial_items[0].direction == Direction.INCOME
-        assert body.financial_items[0].description == "Salary"
-        assert body.financial_items[0].amount == Decimal("2500.00")
-        assert body.financial_items[1].id == sample_snapshot.financial_items[1].id
-        assert body.financial_items[1].direction == Direction.EXPENSE
         assert body.assessment.total_income == Decimal("2500.00")
         assert body.assessment.total_expenditure == Decimal("1500.00")
         assert body.assessment.disposable_income == Decimal("1000.00")

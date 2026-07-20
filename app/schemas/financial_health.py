@@ -37,14 +37,6 @@ class AssessmentResult(BaseModel):
 
 #API response schemas
 
-class FinancialItemResponse(BaseModel):
-    model_config = ConfigDict(from_attributes=True)
-
-    id: UUID
-    direction: Direction
-    description: str
-    amount: Decimal
-
 class AssessmentResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
@@ -61,5 +53,4 @@ class SnapshotResponse(BaseModel):
     user_id: UUID
     period: date
     submitted_at: datetime
-    financial_items: list[FinancialItemResponse]
     assessment: AssessmentResponse
