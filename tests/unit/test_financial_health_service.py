@@ -13,8 +13,9 @@ from app.exceptions import (
     InvalidHistoryLimit,
     SnapshotAlreadyExists,
     SnapshotNotFound,
+    UserNotFound,
 )
-from app.models.models import Direction, FinancialItem, MonthlySnapshot
+from app.models.models import Direction, FinancialItem, MonthlySnapshot, User
 from app.repositories.snapshot_repository import SnapshotRepository
 from app.schemas.financial_health import (
     AffordabilityStatus,
@@ -32,6 +33,17 @@ def mock_session() -> MagicMock:
 @pytest.fixture
 def mock_repository() -> MagicMock:
     return MagicMock(spec=SnapshotRepository)
+
+
+@pytest.fixture
+def mock_user() -> User:
+    return User(
+        id=uuid4(),
+        name="Test User",
+        email="test@example.com",
+        country_code="GB",
+        currency="GBP",
+    )
 
 
 @pytest.fixture
@@ -80,7 +92,8 @@ class TestCalculateAssessment:
         financial_item_input_factory: Callable[..., FinancialItemInput],
     ) -> None:
         result = service.calculate_assessment(
-            _items(financial_item_input_factory, Decimal("2500"), Decimal("1500"))
+            _items(financial_item_input_factory, Decimal("2500"), Decimal("1500")),
+            currency="GBP"
         )
         assert result.status == AffordabilityStatus.HEALTHY
         assert result.disposable_income_ratio == Decimal("0.4")
@@ -91,7 +104,8 @@ class TestCalculateAssessment:
         financial_item_input_factory: Callable[..., FinancialItemInput],
     ) -> None:
         result = service.calculate_assessment(
-            _items(financial_item_input_factory, Decimal("1000"), Decimal("800"))
+            _items(financial_item_input_factory, Decimal("1000"), Decimal("800")),
+            currency="GBP"
         )
         assert result.status == AffordabilityStatus.MANAGEABLE
         assert result.disposable_income_ratio == Decimal("0.2")
@@ -102,7 +116,8 @@ class TestCalculateAssessment:
         financial_item_input_factory: Callable[..., FinancialItemInput],
     ) -> None:
         result = service.calculate_assessment(
-            _items(financial_item_input_factory, Decimal("1000"), Decimal("920"))
+            _items(financial_item_input_factory, Decimal("1000"), Decimal("920")),
+            currency="GBP"
         )
         assert result.status == AffordabilityStatus.CRITICAL
         assert result.disposable_income_ratio == Decimal("0.08")
@@ -113,7 +128,8 @@ class TestCalculateAssessment:
         financial_item_input_factory: Callable[..., FinancialItemInput],
     ) -> None:
         result = service.calculate_assessment(
-            _items(financial_item_input_factory, Decimal("1000"), Decimal("1000"))
+            _items(financial_item_input_factory, Decimal("1000"), Decimal("1000")),
+            currency="GBP"
         )
         assert result.status == AffordabilityStatus.BREAK_EVEN
         assert result.disposable_income == Decimal("0")
@@ -124,7 +140,8 @@ class TestCalculateAssessment:
         financial_item_input_factory: Callable[..., FinancialItemInput],
     ) -> None:
         result = service.calculate_assessment(
-            _items(financial_item_input_factory, Decimal("1000"), Decimal("1500"))
+            _items(financial_item_input_factory, Decimal("1000"), Decimal("1500")),
+            currency="GBP"
         )
         assert result.status == AffordabilityStatus.DEFICIT
         assert result.disposable_income == Decimal("-500")
@@ -136,7 +153,8 @@ class TestCalculateAssessment:
     ) -> None:
         # Zero income is represented as expense-only items (amounts must be > 0).
         result = service.calculate_assessment(
-            _items(financial_item_input_factory, Decimal("0"), Decimal("500"))
+            _items(financial_item_input_factory, Decimal("0"), Decimal("500")),
+            currency="GBP"
         )
         assert result.status == AffordabilityStatus.DEFICIT
         assert result.total_income == Decimal("0")
@@ -148,7 +166,8 @@ class TestCalculateAssessment:
         financial_item_input_factory: Callable[..., FinancialItemInput],
     ) -> None:
         result = service.calculate_assessment(
-            _items(financial_item_input_factory, Decimal("1000"), Decimal("1500"))
+            _items(financial_item_input_factory, Decimal("1000"), Decimal("1500")),
+            currency="GBP"
         )
         assert result.status == AffordabilityStatus.DEFICIT
         assert "exceeding your income by" in result.explanation
@@ -159,7 +178,8 @@ class TestCalculateAssessment:
         financial_item_input_factory: Callable[..., FinancialItemInput],
     ) -> None:
         result = service.calculate_assessment(
-            _items(financial_item_input_factory, Decimal("1000"), Decimal("1000"))
+            _items(financial_item_input_factory, Decimal("1000"), Decimal("1000")),
+            currency="GBP"
         )
         assert result.status == AffordabilityStatus.BREAK_EVEN
         assert "no surplus" in result.explanation
@@ -170,11 +190,12 @@ class TestCalculateAssessment:
         financial_item_input_factory: Callable[..., FinancialItemInput],
     ) -> None:
         result = service.calculate_assessment(
-            _items(financial_item_input_factory, Decimal("1000"), Decimal("1500"))
+            _items(financial_item_input_factory, Decimal("1000"), Decimal("1500")),
+            currency="GBP"
         )
-        assert "1000" in result.explanation
-        assert "1500" in result.explanation
-        assert "-500" in result.explanation
+        assert "£1,000.00" in result.explanation
+        assert "£1,500.00" in result.explanation
+        assert "-£500.00" in result.explanation
 
     def test_break_even_explanation_contains_figures(
         self,
@@ -182,10 +203,11 @@ class TestCalculateAssessment:
         financial_item_input_factory: Callable[..., FinancialItemInput],
     ) -> None:
         result = service.calculate_assessment(
-            _items(financial_item_input_factory, Decimal("1000"), Decimal("1000"))
+            _items(financial_item_input_factory, Decimal("1000"), Decimal("1000")),
+            currency="GBP"
         )
-        assert "1000" in result.explanation
-        assert "0" in result.explanation
+        assert "£1,000.00" in result.explanation
+        assert "£0.00" in result.explanation
 
     def test_exactly_ten_percent_is_manageable(
         self,
@@ -193,7 +215,8 @@ class TestCalculateAssessment:
         financial_item_input_factory: Callable[..., FinancialItemInput],
     ) -> None:
         result = service.calculate_assessment(
-            _items(financial_item_input_factory, Decimal("1000"), Decimal("900"))
+            _items(financial_item_input_factory, Decimal("1000"), Decimal("900")),
+            currency="GBP"
         )
         assert result.disposable_income_ratio == Decimal("0.1")
         assert result.status == AffordabilityStatus.MANAGEABLE
@@ -204,7 +227,8 @@ class TestCalculateAssessment:
         financial_item_input_factory: Callable[..., FinancialItemInput],
     ) -> None:
         result = service.calculate_assessment(
-            _items(financial_item_input_factory, Decimal("10000"), Decimal("9001"))
+            _items(financial_item_input_factory, Decimal("10000"), Decimal("9001")),
+            currency="GBP"
         )
         assert result.status == AffordabilityStatus.CRITICAL
         assert result.disposable_income_ratio < Decimal("0.10")
@@ -215,7 +239,8 @@ class TestCalculateAssessment:
         financial_item_input_factory: Callable[..., FinancialItemInput],
     ) -> None:
         result = service.calculate_assessment(
-            _items(financial_item_input_factory, Decimal("1000"), Decimal("750"))
+            _items(financial_item_input_factory, Decimal("1000"), Decimal("750")),
+            currency="GBP"
         )
         assert result.disposable_income_ratio == Decimal("0.25")
         assert result.status == AffordabilityStatus.HEALTHY
@@ -226,7 +251,8 @@ class TestCalculateAssessment:
         financial_item_input_factory: Callable[..., FinancialItemInput],
     ) -> None:
         result = service.calculate_assessment(
-            _items(financial_item_input_factory, Decimal("10000"), Decimal("7501"))
+            _items(financial_item_input_factory, Decimal("10000"), Decimal("7501")),
+            currency="GBP"
         )
         assert result.status == AffordabilityStatus.MANAGEABLE
         assert result.disposable_income_ratio < Decimal("0.25")
@@ -250,7 +276,7 @@ class TestCalculateAssessment:
                 direction=Direction.EXPENSE, description="Food", amount=Decimal("300")
             ),
         ]
-        result = service.calculate_assessment(items)
+        result = service.calculate_assessment(items, currency="GBP")
         assert result.total_income == Decimal("2500")
         assert result.total_expenditure == Decimal("1200")
 
@@ -260,7 +286,8 @@ class TestCalculateAssessment:
         financial_item_input_factory: Callable[..., FinancialItemInput],
     ) -> None:
         result = service.calculate_assessment(
-            _items(financial_item_input_factory, Decimal("2500"), Decimal("1500"))
+            _items(financial_item_input_factory, Decimal("2500"), Decimal("1500")),
+            currency="GBP"
         )
         assert result.disposable_income == Decimal("1000")
 
@@ -270,11 +297,12 @@ class TestCalculateAssessment:
         financial_item_input_factory: Callable[..., FinancialItemInput],
     ) -> None:
         result = service.calculate_assessment(
-            _items(financial_item_input_factory, Decimal("2500"), Decimal("1500"))
+            _items(financial_item_input_factory, Decimal("2500"), Decimal("1500")),
+            currency="GBP"
         )
-        assert "2500" in result.explanation
-        assert "1500" in result.explanation
-        assert "1000" in result.explanation
+        assert "£2,500.00" in result.explanation
+        assert "£1,500.00" in result.explanation
+        assert "£1,000.00" in result.explanation
         assert "40" in result.explanation
 
     def test_explanation_maps_to_status(
@@ -283,19 +311,24 @@ class TestCalculateAssessment:
         financial_item_input_factory: Callable[..., FinancialItemInput],
     ) -> None:
         deficit = service.calculate_assessment(
-            _items(financial_item_input_factory, Decimal("1000"), Decimal("1500"))
+            _items(financial_item_input_factory, Decimal("1000"), Decimal("1500")),
+            currency="GBP"
         )
         break_even = service.calculate_assessment(
-            _items(financial_item_input_factory, Decimal("1000"), Decimal("1000"))
+            _items(financial_item_input_factory, Decimal("1000"), Decimal("1000")),
+            currency="GBP"
         )
         critical = service.calculate_assessment(
-            _items(financial_item_input_factory, Decimal("1000"), Decimal("920"))
+            _items(financial_item_input_factory, Decimal("1000"), Decimal("920")),
+            currency="GBP"
         )
         manageable = service.calculate_assessment(
-            _items(financial_item_input_factory, Decimal("1000"), Decimal("800"))
+            _items(financial_item_input_factory, Decimal("1000"), Decimal("800")),
+            currency="GBP"
         )
         healthy = service.calculate_assessment(
-            _items(financial_item_input_factory, Decimal("2500"), Decimal("1500"))
+            _items(financial_item_input_factory, Decimal("2500"), Decimal("1500")),
+            currency="GBP"
         )
 
         assert deficit.status == AffordabilityStatus.DEFICIT
@@ -319,7 +352,8 @@ class TestCalculateAssessment:
         financial_item_input_factory: Callable[..., FinancialItemInput],
     ) -> None:
         result = service.calculate_assessment(
-            _items(financial_item_input_factory, Decimal("2500"), Decimal("0"))
+            _items(financial_item_input_factory, Decimal("2500"), Decimal("0")),
+            currency="GBP"
         )
         assert result.total_expenditure == Decimal("0")
         assert result.disposable_income_ratio == Decimal("1")
@@ -332,19 +366,25 @@ class TestCalculateAssessment:
 
 
 class TestSubmitSnapshot:
+    @pytest.fixture(autouse=True)
+    def _stub_user_lookup(self, mock_session: MagicMock, mock_user: User) -> None:
+        mock_session.scalar.return_value = mock_user
+
     def test_happy_path_returns_snapshot(
         self,
         service: FinancialHealthService,
         mock_session: MagicMock,
         mock_repository: MagicMock,
+        mock_user: User,
         submit_snapshot_request_factory: Callable[..., SubmitSnapshotRequest],
     ) -> None:
         mock_repository.exists_for_period.return_value = False
-        request = submit_snapshot_request_factory()
+        request = submit_snapshot_request_factory(user_id=mock_user.id)
 
         result = service.submit_snapshot(request)
 
         assert isinstance(result, MonthlySnapshot)
+        assert result.currency == "GBP"
         mock_repository.add.assert_called_once()
         mock_session.commit.assert_called_once()
 
@@ -352,10 +392,11 @@ class TestSubmitSnapshot:
         self,
         service: FinancialHealthService,
         mock_repository: MagicMock,
+        mock_user: User,
         submit_snapshot_request_factory: Callable[..., SubmitSnapshotRequest],
     ) -> None:
         mock_repository.exists_for_period.return_value = False
-        request = submit_snapshot_request_factory()
+        request = submit_snapshot_request_factory(user_id=mock_user.id)
 
         with patch("app.services.financial_health_service.date") as mock_date:
             mock_date.today.return_value = date(2026, 7, 15)
@@ -363,15 +404,33 @@ class TestSubmitSnapshot:
 
         assert result.period == date(2026, 7, 1)
 
-    def test_raises_snapshot_already_exists(
+    def test_raises_user_not_found(
         self,
         service: FinancialHealthService,
         mock_session: MagicMock,
         mock_repository: MagicMock,
         submit_snapshot_request_factory: Callable[..., SubmitSnapshotRequest],
     ) -> None:
-        mock_repository.exists_for_period.return_value = True
+        mock_session.scalar.return_value = None
         request = submit_snapshot_request_factory()
+
+        with pytest.raises(UserNotFound):
+            service.submit_snapshot(request)
+
+        mock_repository.exists_for_period.assert_not_called()
+        mock_repository.add.assert_not_called()
+        mock_session.commit.assert_not_called()
+
+    def test_raises_snapshot_already_exists(
+        self,
+        service: FinancialHealthService,
+        mock_session: MagicMock,
+        mock_repository: MagicMock,
+        mock_user: User,
+        submit_snapshot_request_factory: Callable[..., SubmitSnapshotRequest],
+    ) -> None:
+        mock_repository.exists_for_period.return_value = True
+        request = submit_snapshot_request_factory(user_id=mock_user.id)
 
         with pytest.raises(SnapshotAlreadyExists):
             service.submit_snapshot(request)
@@ -384,6 +443,7 @@ class TestSubmitSnapshot:
         service: FinancialHealthService,
         mock_session: MagicMock,
         mock_repository: MagicMock,
+        mock_user: User,
         submit_snapshot_request_factory: Callable[..., SubmitSnapshotRequest],
     ) -> None:
         mock_repository.exists_for_period.return_value = False
@@ -391,7 +451,7 @@ class TestSubmitSnapshot:
         mock_repository.add.side_effect = lambda _snapshot: call_order.append("add")
         mock_session.commit.side_effect = lambda: call_order.append("commit")
 
-        service.submit_snapshot(submit_snapshot_request_factory())
+        service.submit_snapshot(submit_snapshot_request_factory(user_id=mock_user.id))
 
         assert call_order == ["add", "commit"]
         added = mock_repository.add.call_args.args[0]
@@ -401,6 +461,7 @@ class TestSubmitSnapshot:
         self,
         service: FinancialHealthService,
         mock_repository: MagicMock,
+        mock_user: User,
         submit_snapshot_request_factory: Callable[..., SubmitSnapshotRequest],
         financial_item_input_factory: Callable[..., FinancialItemInput],
     ) -> None:
@@ -417,7 +478,7 @@ class TestSubmitSnapshot:
                 amount=Decimal("1200.00"),
             ),
         ]
-        request = submit_snapshot_request_factory(items=items)
+        request = submit_snapshot_request_factory(user_id=mock_user.id, items=items)
 
         service.submit_snapshot(request)
 
@@ -433,30 +494,35 @@ class TestSubmitSnapshot:
         self,
         service: FinancialHealthService,
         mock_repository: MagicMock,
+        mock_user: User,
         submit_snapshot_request_factory: Callable[..., SubmitSnapshotRequest],
     ) -> None:
         mock_repository.exists_for_period.return_value = False
         # Default factory: income 2500, expense 1500 -> HEALTHY
-        service.submit_snapshot(submit_snapshot_request_factory())
+        service.submit_snapshot(submit_snapshot_request_factory(user_id=mock_user.id))
 
         snapshot: MonthlySnapshot = mock_repository.add.call_args.args[0]
         assert snapshot.assessment is not None
+        assert snapshot.currency == "GBP"
+        assert snapshot.assessment.currency == "GBP"
         assert snapshot.assessment.total_income == Decimal("2500.00")
         assert snapshot.assessment.total_expenditure == Decimal("1500.00")
         assert snapshot.assessment.disposable_income == Decimal("1000.00")
         assert snapshot.assessment.status == AffordabilityStatus.HEALTHY.value
         assert "substantial portion" in snapshot.assessment.explanation
+        assert "£" in snapshot.assessment.explanation
 
     def test_commits_on_success(
         self,
         service: FinancialHealthService,
         mock_session: MagicMock,
         mock_repository: MagicMock,
+        mock_user: User,
         submit_snapshot_request_factory: Callable[..., SubmitSnapshotRequest],
     ) -> None:
         mock_repository.exists_for_period.return_value = False
 
-        service.submit_snapshot(submit_snapshot_request_factory())
+        service.submit_snapshot(submit_snapshot_request_factory(user_id=mock_user.id))
 
         mock_session.commit.assert_called_once()
         mock_session.rollback.assert_not_called()
@@ -466,15 +532,35 @@ class TestSubmitSnapshot:
         service: FinancialHealthService,
         mock_session: MagicMock,
         mock_repository: MagicMock,
+        mock_user: User,
         submit_snapshot_request_factory: Callable[..., SubmitSnapshotRequest],
     ) -> None:
         mock_repository.exists_for_period.return_value = False
         mock_session.commit.side_effect = RuntimeError("db failure")
 
         with pytest.raises(RuntimeError, match="db failure"):
-            service.submit_snapshot(submit_snapshot_request_factory())
+            service.submit_snapshot(
+                submit_snapshot_request_factory(user_id=mock_user.id)
+            )
 
         mock_session.rollback.assert_called_once()
+
+    def test_submitted_at_is_utc_aware(
+        self,
+        service: FinancialHealthService,
+        mock_repository: MagicMock,
+        mock_user: User,
+        submit_snapshot_request_factory: Callable[..., SubmitSnapshotRequest],
+    ) -> None:
+        mock_repository.exists_for_period.return_value = False
+
+        result = service.submit_snapshot(
+            submit_snapshot_request_factory(user_id=mock_user.id)
+        )
+
+        assert isinstance(result.submitted_at, datetime)
+        assert result.submitted_at.tzinfo is not None
+        assert result.submitted_at.tzinfo == UTC
 
 
 # ---------------------------------------------------------------------------
@@ -588,7 +674,8 @@ class TestEdgeCases:
         financial_item_input_factory: Callable[..., FinancialItemInput],
     ) -> None:
         result = service.calculate_assessment(
-            _items(financial_item_input_factory, Decimal("0"), Decimal("500"))
+            _items(financial_item_input_factory, Decimal("0"), Decimal("500")),
+            currency="GBP"
         )
         assert result.total_income == Decimal("0")
         assert result.total_expenditure == Decimal("500")
@@ -608,7 +695,8 @@ class TestEdgeCases:
                     description="Salary",
                     amount=Decimal("2000"),
                 )
-            ]
+            ],
+            currency="GBP",
         )
         assert result.total_income == Decimal("2000")
         assert result.total_expenditure == Decimal("0")
@@ -634,22 +722,8 @@ class TestEdgeCases:
             )
             for i in range(10)
         ]
-        result = service.calculate_assessment(items)
+        result = service.calculate_assessment(items, currency="GBP")
         assert result.total_income == Decimal("1500.00")
         assert result.total_expenditure == Decimal("500.00")
         assert result.disposable_income == Decimal("1000.00")
         assert result.status == AffordabilityStatus.HEALTHY
-
-    def test_submitted_at_is_utc_aware(
-        self,
-        service: FinancialHealthService,
-        mock_repository: MagicMock,
-        submit_snapshot_request_factory: Callable[..., SubmitSnapshotRequest],
-    ) -> None:
-        mock_repository.exists_for_period.return_value = False
-
-        result = service.submit_snapshot(submit_snapshot_request_factory())
-
-        assert isinstance(result.submitted_at, datetime)
-        assert result.submitted_at.tzinfo is not None
-        assert result.submitted_at.tzinfo == UTC

@@ -45,6 +45,7 @@ class AssessmentResponse(BaseModel):
     disposable_income: Decimal
     status: AffordabilityStatus
     explanation: str
+    currency: str
 
 class SnapshotResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
@@ -53,4 +54,5 @@ class SnapshotResponse(BaseModel):
     user_id: UUID
     period: date
     submitted_at: datetime
+    currency: str
     assessment: AssessmentResponse

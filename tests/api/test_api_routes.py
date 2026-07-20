@@ -49,11 +49,13 @@ class TestSubmitSnapshot:
         assert body.user_id == sample_snapshot.user_id
         assert body.period == sample_snapshot.period
         assert body.submitted_at == sample_snapshot.submitted_at
+        assert body.currency == "GBP"
         assert body.assessment is not None
         assert body.assessment.status.value == "HEALTHY"
         assert body.assessment.total_income == Decimal("2500.00")
         assert body.assessment.total_expenditure == Decimal("1500.00")
         assert body.assessment.disposable_income == Decimal("1000.00")
+        assert body.assessment.currency == "GBP"
 
     def test_snapshot_already_exists_maps_to_409(
         self,
@@ -316,6 +318,8 @@ class TestGetSnapshot:
         assert body.assessment.disposable_income == Decimal("1000.00")
         assert body.assessment.status.value == "HEALTHY"
         assert body.assessment.explanation == "Test explanation"
+        assert body.assessment.currency == "GBP"
+        assert body.currency == "GBP"
 
     def test_snapshot_not_found_maps_to_404(
         self,

@@ -48,6 +48,16 @@ class TimestampMixin:
 
 class User(TimestampMixin, Base):
     __tablename__ = "users"
+    __table_args__ = (
+        CheckConstraint(
+            "country_code IN ('GB', 'FR', 'US')",
+            name="ck_users_country_code",
+        ),
+        CheckConstraint(
+            "currency IN ('GBP', 'EUR', 'USD')",
+            name="ck_users_currency",
+        ),
+    )
 
     id: Mapped[uuid.UUID] = mapped_column(
         primary_key=True,
@@ -55,6 +65,8 @@ class User(TimestampMixin, Base):
     )
     name: Mapped[str] = mapped_column(String, nullable=False)
     email: Mapped[str] = mapped_column(String, nullable=False, unique=True)
+    country_code: Mapped[str] = mapped_column(String(2), nullable=False)
+    currency: Mapped[str] = mapped_column(String(3), nullable=False)
 
     snapshots: Mapped[list["MonthlySnapshot"]] = relationship(
         back_populates="user",
@@ -66,6 +78,10 @@ class MonthlySnapshot(TimestampMixin, Base):
     __tablename__ = "monthly_snapshots"
     __table_args__ = (
         UniqueConstraint("user_id", "period", name="uq_monthly_snapshots_user_period"),
+        CheckConstraint(
+            "currency IN ('GBP', 'EUR', 'USD')",
+            name="ck_monthly_snapshots_currency",
+        ),
     )
 
     id: Mapped[uuid.UUID] = mapped_column(
@@ -81,6 +97,7 @@ class MonthlySnapshot(TimestampMixin, Base):
         DateTime(timezone=True),
         nullable=False,
     )
+    currency: Mapped[str] = mapped_column(String(3), nullable=False)
 
     user: Mapped["User"] = relationship(back_populates="snapshots")
     financial_items: Mapped[list["FinancialItem"]] = relationship(
@@ -120,6 +137,12 @@ class FinancialItem(TimestampMixin, Base):
 
 class MonthlyAssessment(TimestampMixin, Base):
     __tablename__ = "monthly_assessments"
+    __table_args__ = (
+        CheckConstraint(
+            "currency IN ('GBP', 'EUR', 'USD')",
+            name="ck_monthly_assessments_currency",
+        ),
+    )
 
     id: Mapped[uuid.UUID] = mapped_column(
         primary_key=True,
@@ -135,5 +158,6 @@ class MonthlyAssessment(TimestampMixin, Base):
     disposable_income: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False)
     status: Mapped[str] = mapped_column(String, nullable=False)
     explanation: Mapped[str] = mapped_column(Text, nullable=False)
+    currency: Mapped[str] = mapped_column(String(3), nullable=False)
 
     snapshot: Mapped["MonthlySnapshot"] = relationship(back_populates="assessment")

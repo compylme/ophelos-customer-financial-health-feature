@@ -24,13 +24,21 @@
 - Affordability assessment:
     - As the brief did not define an affordability algorithm, for the purposes of this exercise I implemented a simple, deterministic rule-based assessment based on disposable income as a percentage of income
 
-**What was left out**
+**What was left out and what would be built next**
+- Implement secure statement sharing via a time-limited link
+- Generate a PDF export of the statement with appropriate branding
+   - The above were left out due to time constraints as generating time limited secure statements raises complexities around but not limited to:
+        - User authentication and authorization
+        - Token expiry management
+        - enforcement of link expiration
+        - Extensive testing and validation of the secure statement sharing mechanism
+
 - User management and authentication: 
     - User registration, login and identity management were deliberately left outside the scope of this exercise. I assumed that Ophelos would already have an existing identity provider and user management system.
 
     - For simplicity, the current API accepts a user_id as part of the request. In a production implementation, the authenticated user's identity should instead be derived from a verified access token or session.
 
-    - The next steps would be to:  
+    - Steps would be:  
         - integrate with an existing identity provider
         - validate authentication credentials at the API boundary
         - derive the user identity from the authenticated principal
@@ -38,7 +46,7 @@
         - remove user_id from the request payload
         - add tests covering unauthenticated, forbidden and cross-user access
 
-- Frontend next steps:
+- Frontend implementation:
     I deliberately prioritised the assessment domain, persistence model, API
     contract and automated tests over building a separate frontend within the
     available time.
@@ -47,10 +55,10 @@
     keeping the solution within the application types explicitly permitted by the
     brief.
 
-- What I would build next:
-    - Lightweight customer interface that visualises disposable income and affordability status over time
-    - Allows customers to enter their current monthly income and expenditure
-    - Displays the assessment in a clear, understandable format
+    - Steps would be:
+        - Lightweight customer interface that visualises disposable income and affordability status over time
+        - Allows customers to enter their current monthly income and expenditure
+        - Displays the assessment in a clear, understandable format
 
 
 **Test coverage**

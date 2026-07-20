@@ -15,6 +15,7 @@ from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
+from app.exceptions import UserNotFound
 from app.models.models import (
     Direction,
     FinancialItem,
@@ -54,6 +55,7 @@ class TestSubmitSnapshot:
         assert len(snapshots) == 1
         assert snapshots[0].id == result.id
         assert snapshots[0].period == date.today().replace(day=1)
+        assert snapshots[0].currency == "GBP"
 
         items = db_session.scalars(
             select(FinancialItem).where(FinancialItem.snapshot_id == result.id)
@@ -75,6 +77,8 @@ class TestSubmitSnapshot:
         assert assessments[0].total_expenditure == Decimal("1500.00")
         assert assessments[0].disposable_income == Decimal("1000.00")
         assert assessments[0].status == "HEALTHY"
+        assert assessments[0].currency == "GBP"
+        assert "£" in assessments[0].explanation
 
     def test_returned_snapshot_matches_persisted_data(
         self,
@@ -90,6 +94,7 @@ class TestSubmitSnapshot:
         assert reloaded.id == returned.id
         assert reloaded.user_id == returned.user_id
         assert reloaded.period == returned.period
+        assert reloaded.currency == returned.currency == "GBP"
 
         assert len(reloaded.financial_items) == len(returned.financial_items)
         returned_items = sorted(
@@ -118,15 +123,43 @@ class TestSubmitSnapshot:
         )
         assert reloaded.assessment.status == returned.assessment.status
         assert reloaded.assessment.explanation == returned.assessment.explanation
+        assert reloaded.assessment.currency == returned.assessment.currency == "GBP"
 
-    def test_rollback_on_commit_failure_leaves_no_partial_state(
+    def test_raises_user_not_found_for_unknown_user(
         self,
         service: FinancialHealthService,
         db_session: Session,
         submit_snapshot_request_factory: Callable[..., SubmitSnapshotRequest],
     ) -> None:
-        # Default factory uses a random user_id that does not exist — FK violation.
         request = submit_snapshot_request_factory()
+
+        with pytest.raises(UserNotFound):
+            service.submit_snapshot(request)
+
+        assert db_session.scalar(select(func.count()).select_from(MonthlySnapshot)) == 0
+        assert db_session.scalar(select(func.count()).select_from(FinancialItem)) == 0
+        assert (
+            db_session.scalar(select(func.count()).select_from(MonthlyAssessment)) == 0
+        )
+
+    def test_rollback_on_commit_failure_leaves_no_partial_state(
+        self,
+        service: FinancialHealthService,
+        db_session: Session,
+        persisted_user: User,
+        submit_snapshot_request_factory: Callable[..., SubmitSnapshotRequest],
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        request = submit_snapshot_request_factory(user_id=persisted_user.id)
+        original_add = service._repository.add
+
+        def add_with_invalid_currency(snapshot: MonthlySnapshot) -> None:
+            snapshot.currency = "XXX"
+            if snapshot.assessment is not None:
+                snapshot.assessment.currency = "XXX"
+            original_add(snapshot)
+
+        monkeypatch.setattr(service._repository, "add", add_with_invalid_currency)
 
         with pytest.raises(IntegrityError):
             service.submit_snapshot(request)
@@ -172,8 +205,40 @@ class TestSubmitSnapshot:
         assert assessment.status == "DEFICIT"
         assert assessment.disposable_income == Decimal("-500.00")
         assert "exceeding your income by" in assessment.explanation
+        assert "£" in assessment.explanation
         assert result.assessment is not None
         assert result.assessment.status == "DEFICIT"
+
+    def test_uses_user_currency_preference_in_explanation(
+        self,
+        service: FinancialHealthService,
+        db_session: Session,
+        user_factory: Callable[..., User],
+        submit_snapshot_request_factory: Callable[..., SubmitSnapshotRequest],
+    ) -> None:
+        eur_user = user_factory(
+            name="EUR User",
+            country_code="FR",
+            currency="EUR",
+        )
+        request = submit_snapshot_request_factory(user_id=eur_user.id)
+
+        result = service.submit_snapshot(request)
+
+        assert result.currency == "EUR"
+        assert result.assessment is not None
+        assert result.assessment.currency == "EUR"
+        assert "€" in result.assessment.explanation
+        assert "£" not in result.assessment.explanation
+
+        assessment = db_session.scalar(
+            select(MonthlyAssessment).where(
+                MonthlyAssessment.snapshot_id == result.id
+            )
+        )
+        assert assessment is not None
+        assert assessment.currency == "EUR"
+        assert "€2,500.00" in assessment.explanation
 
 
 # ---------------------------------------------------------------------------
