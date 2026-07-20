@@ -43,7 +43,6 @@ class AssessmentResponse(BaseModel):
     total_income: Decimal
     total_expenditure: Decimal
     disposable_income: Decimal
-    status: AffordabilityStatus
     explanation: str
     currency: str
 
