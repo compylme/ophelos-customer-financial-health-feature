@@ -75,6 +75,16 @@ Seeded content:
 
 The current month is left empty so you can manually submit a new snapshot during demos.
 
+## Demo UI
+
+With the server running (`uvicorn app.main:app --reload`), open:
+
+```
+http://127.0.0.1:8000/demo
+```
+
+The page displays the seeded history for the demo user and provides a form to submit the current month's snapshot.
+
 ## API endpoints
 
 | Method | Path | Description |
