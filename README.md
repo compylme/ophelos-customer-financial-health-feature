@@ -14,6 +14,7 @@ A REST API that lets users submit monthly financial snapshots (income and expens
 
 - Python 3.13
 - PostgreSQL (local instance or container)
+- Postgres and Docker installed and running
 - Two databases created before first run:
   - `financial_assessment` (application / demo data)
   - `financial_assessment_test` (test suite)
@@ -39,9 +40,16 @@ source .venv/bin/activate
 # Install dependencies
 pip install -r requirements.txt
 
+# Run Postgres with Docker
+docker run --name financial-pg \
+  -e POSTGRES_USER=admin \
+  -e POSTGRES_HOST_AUTH_METHOD=trust \
+  -p 5432:5432 \
+  -d postgres:16
+
 # Create databases (example with psql)
-createdb financial_assessment
-createdb financial_assessment_test
+docker exec -it financial-pg psql -U admin -c "CREATE DATABASE financial_assessment"
+docker exec -it financial-pg psql -U admin -c "CREATE DATABASE financial_assessment_test"
 
 # Apply migrations
 alembic upgrade head
@@ -84,7 +92,7 @@ Ensure the `financial_assessment_test` database exists, then from the project ro
 pytest
 ```
 
-The suite covers unit tests for the service layer and integration tests against the real Postgres test database. Failures exit non-zero.
+The suite covers unit tests for the service layer and integration tests against the real Postgres test database. Failures cause a non-zero exit.
 
 ## Continuous integration
 
