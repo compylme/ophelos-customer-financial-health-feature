@@ -51,7 +51,7 @@ class TestSubmitSnapshot:
         assert body.submitted_at == sample_snapshot.submitted_at
         assert body.currency == "GBP"
         assert body.assessment is not None
-        assert body.assessment.status.value == "HEALTHY"
+        assert "status" not in response.json()["assessment"]
         assert body.assessment.total_income == Decimal("2500.00")
         assert body.assessment.total_expenditure == Decimal("1500.00")
         assert body.assessment.disposable_income == Decimal("1000.00")
@@ -316,7 +316,7 @@ class TestGetSnapshot:
         assert body.assessment.total_income == Decimal("2500.00")
         assert body.assessment.total_expenditure == Decimal("1500.00")
         assert body.assessment.disposable_income == Decimal("1000.00")
-        assert body.assessment.status.value == "HEALTHY"
+        assert "status" not in response.json()["assessment"]
         assert body.assessment.explanation == "Test explanation"
         assert body.assessment.currency == "GBP"
         assert body.currency == "GBP"

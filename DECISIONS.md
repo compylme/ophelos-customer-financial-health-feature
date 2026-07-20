@@ -9,6 +9,9 @@
     - Existing snapshots are not silently overwritten
     - Removes the complexity of managing multiple versions of the same snapshot and protects the integrity of historical timelines, but corrections would require explicit/manual intervention rather than mutation
 
+- Use internal affordability statuses for explanation mapping:
+    - Although we have internal statuses that are triggered by disposable income ratios, we use a customer facing explanation that is appropriate for the financial situation.
+
 - Store derived explanations in the database as part of the snapshot:
     - The generated explanation is stored alongside the assessment so that each immutable snapshot preserves the exact wording produced at submission time. In a production environment, I would version assessment rules mapped to a table that contains explanations but not related to any customer
     - As calculation logic evolves/new languages are supported, we can simply update the mapping to the new explanation text
