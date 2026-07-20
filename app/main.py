@@ -1,6 +1,8 @@
 from contextlib import asynccontextmanager
+from pathlib import Path
 
 from fastapi import FastAPI
+from fastapi.responses import HTMLResponse
 
 from app.api.errors import domain_error_handler
 from app.api.routes import router
@@ -31,3 +33,9 @@ app.add_exception_handler(
 @app.get("/")
 def index() -> dict[str, str]:
     return {"message": "Financial Health API is running"}
+
+
+@app.get("/demo", response_class=HTMLResponse, include_in_schema=False)
+def demo() -> HTMLResponse:
+    html_path = Path(__file__).parent / "static" / "demo.html"
+    return HTMLResponse(html_path.read_text(encoding="utf-8"))
