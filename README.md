@@ -1,6 +1,6 @@
 # Financial Health API
 
-A REST API that lets users submit monthly financial snapshots (income and expenses), calculates an affordability assessment, and returns the results for review. Each snapshot is classified as one of `DEFICIT`, `BREAK_EVEN`, `CRITICAL`, `MANAGEABLE`, or `HEALTHY`, with a factual explanation derived from the submitted figures.
+A REST API that lets users submit monthly financial snapshots (income and expenses), calculates an affordability assessment, and returns the results for review. Responses include income/expenditure totals, disposable income, and a neutral factual explanation derived from the submitted figures. Status labels used for internal classification are not exposed to API clients.
 
 Currency and country are user preferences. Supported combinations are `GB`/`GBP`, `FR`/`EUR`, and `US`/`USD`. The client does not send currency when submitting a snapshot — the service reads it from the user and stamps it onto the snapshot and assessment. Explanation amounts are formatted with the user's preferred currency symbol (for example `£2,500.00`). Historical snapshots keep the currency they were created with; changing a user's preference affects future submissions only. Financial items have no currency column — currency is taken from the parent snapshot at runtime.
 
@@ -71,7 +71,7 @@ Seeded content:
 - A demo user: `demo@ophelos.com` with UUID `a1b2c3d4-e5f6-7890-abcd-ef1234567890`, country `GB`, currency `GBP`
 - Up to 11 months of historical snapshots (all months except the current month), each stamped with `GBP`
 - Realistic income/expense items per month
-- A monthly assessment for each snapshot, including the status and a GBP-formatted explanation produced by the same calculation logic used at submit time
+- A monthly assessment for each snapshot, including totals and a currency-formatted explanation produced by the same calculation logic used at submit time
 
 The current month is left empty so you can manually submit a new snapshot during demos.
 
