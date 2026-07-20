@@ -40,7 +40,7 @@ source .venv/bin/activate
 # Install dependencies
 pip install -r requirements.txt
 
-# Docker run
+# Run Postgres with Docker
 docker run --name financial-pg \
   -e POSTGRES_USER=admin \
   -e POSTGRES_HOST_AUTH_METHOD=trust \
@@ -92,7 +92,7 @@ Ensure the `financial_assessment_test` database exists, then from the project ro
 pytest
 ```
 
-The suite covers unit tests for the service layer and integration tests against the real Postgres test database. Failures exit non-zero.
+The suite covers unit tests for the service layer and integration tests against the real Postgres test database. Failures cause a non-zero exit.
 
 ## Continuous integration
 
