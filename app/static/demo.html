@@ -1,0 +1,568 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Financial Health Demo</title>
+  <style>
+    :root {
+      --bg: #f6f7f9;
+      --card: #ffffff;
+      --border: #d8dee6;
+      --text: #1a1f2c;
+      --muted: #5b6573;
+      --accent: #1f6feb;
+      --accent-hover: #1858c7;
+      --danger-bg: #fdecea;
+      --danger-border: #f5c2c0;
+      --danger-text: #8a1f1b;
+      --success-bg: #e8f5e9;
+      --success-border: #b7dfb9;
+      --success-text: #1b5e20;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.5;
+    }
+
+    main {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 2rem 1.25rem 3rem;
+    }
+
+    h1 {
+      margin: 0 0 0.25rem;
+      font-size: 1.75rem;
+    }
+
+    h2 {
+      margin: 0 0 1rem;
+      font-size: 1.25rem;
+    }
+
+    .subtitle {
+      color: var(--muted);
+      margin: 0 0 1.5rem;
+    }
+
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 1.25rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .alert {
+      display: none;
+      padding: 0.85rem 1rem;
+      border-radius: 6px;
+      margin-bottom: 1.25rem;
+      white-space: pre-wrap;
+    }
+
+    .alert.visible {
+      display: block;
+    }
+
+    .alert.error {
+      background: var(--danger-bg);
+      border: 1px solid var(--danger-border);
+      color: var(--danger-text);
+    }
+
+    .alert.success {
+      background: var(--success-bg);
+      border: 1px solid var(--success-border);
+      color: var(--success-text);
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.95rem;
+    }
+
+    th, td {
+      border: 1px solid var(--border);
+      padding: 0.65rem 0.75rem;
+      text-align: left;
+      vertical-align: top;
+    }
+
+    th {
+      background: #eef2f7;
+      font-weight: 600;
+    }
+
+    td.explanation {
+      max-width: 280px;
+    }
+
+    .empty-state, .loading {
+      color: var(--muted);
+      font-style: italic;
+    }
+
+    .item-section {
+      margin-bottom: 1.25rem;
+    }
+
+    .item-section h3 {
+      margin: 0 0 0.75rem;
+      font-size: 1rem;
+    }
+
+    .item-row {
+      display: grid;
+      grid-template-columns: 1fr 140px auto;
+      gap: 0.5rem;
+      margin-bottom: 0.5rem;
+      align-items: center;
+    }
+
+    input[type="text"],
+    input[type="number"] {
+      width: 100%;
+      padding: 0.5rem 0.65rem;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      font: inherit;
+    }
+
+    button {
+      font: inherit;
+      border-radius: 6px;
+      border: 1px solid var(--border);
+      background: #fff;
+      padding: 0.45rem 0.85rem;
+      cursor: pointer;
+    }
+
+    button:hover {
+      background: #f0f3f7;
+    }
+
+    button.primary {
+      background: var(--accent);
+      border-color: var(--accent);
+      color: #fff;
+    }
+
+    button.primary:hover {
+      background: var(--accent-hover);
+    }
+
+    button.danger {
+      color: var(--danger-text);
+      border-color: var(--danger-border);
+    }
+
+    .row-actions {
+      display: flex;
+      gap: 0.5rem;
+      margin-top: 0.5rem;
+    }
+
+    .form-actions {
+      margin-top: 1rem;
+    }
+
+    #result-panel {
+      display: none;
+    }
+
+    #result-panel.visible {
+      display: block;
+    }
+
+    .result-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+      gap: 0.75rem;
+      margin-bottom: 1rem;
+    }
+
+    .result-item {
+      background: #f8fafc;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 0.75rem;
+    }
+
+    .result-item .label {
+      display: block;
+      color: var(--muted);
+      font-size: 0.85rem;
+      margin-bottom: 0.25rem;
+    }
+
+    .result-item .value {
+      font-weight: 600;
+    }
+
+    @media (max-width: 640px) {
+      .item-row {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>Financial Health Demo</h1>
+    <p class="subtitle">
+      Demo user: <code>demo@ophelos.com</code>
+      (<code>a1b2c3d4-e5f6-7890-abcd-ef1234567890</code>)
+    </p>
+
+    <div id="alert" class="alert" role="alert"></div>
+
+    <section class="card">
+      <h2>Snapshot history</h2>
+      <div id="history-container">
+        <p class="loading">Loading history…</p>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>Submit current month</h2>
+      <form id="snapshot-form">
+        <div class="item-section">
+          <h3>Income</h3>
+          <div id="income-rows"></div>
+          <div class="row-actions">
+            <button type="button" id="add-income">Add income row</button>
+          </div>
+        </div>
+
+        <div class="item-section">
+          <h3>Expenses</h3>
+          <div id="expense-rows"></div>
+          <div class="row-actions">
+            <button type="button" id="add-expense">Add expense row</button>
+          </div>
+        </div>
+
+        <div class="form-actions">
+          <button type="submit" class="primary">Submit snapshot</button>
+        </div>
+      </form>
+    </section>
+
+    <section id="result-panel" class="card">
+      <h2>Latest assessment</h2>
+      <div class="result-grid">
+        <div class="result-item">
+          <span class="label">Period</span>
+          <span class="value" id="result-period"></span>
+        </div>
+        <div class="result-item">
+          <span class="label">Currency</span>
+          <span class="value" id="result-currency"></span>
+        </div>
+        <div class="result-item">
+          <span class="label">Total income</span>
+          <span class="value" id="result-income"></span>
+        </div>
+        <div class="result-item">
+          <span class="label">Total outgoing</span>
+          <span class="value" id="result-outgoing"></span>
+        </div>
+        <div class="result-item">
+          <span class="label">Disposable income</span>
+          <span class="value" id="result-disposable"></span>
+        </div>
+      </div>
+      <p><strong>Explanation</strong></p>
+      <p id="result-explanation"></p>
+    </section>
+  </main>
+
+  <script>
+    const DEMO_USER_ID = "a1b2c3d4-e5f6-7890-abcd-ef1234567890";
+
+    const alertEl = document.getElementById("alert");
+    const historyContainer = document.getElementById("history-container");
+    const incomeRows = document.getElementById("income-rows");
+    const expenseRows = document.getElementById("expense-rows");
+    const form = document.getElementById("snapshot-form");
+    const resultPanel = document.getElementById("result-panel");
+
+    function showAlert(message, type) {
+      alertEl.textContent = message;
+      alertEl.className = "alert visible " + type;
+    }
+
+    function clearAlert() {
+      alertEl.textContent = "";
+      alertEl.className = "alert";
+    }
+
+    function formatAmount(amount, currency) {
+      const value = Number(amount);
+      try {
+        return new Intl.NumberFormat(undefined, {
+          style: "currency",
+          currency: currency || "GBP",
+        }).format(value);
+      } catch (_err) {
+        return currency + " " + value.toFixed(2);
+      }
+    }
+
+    function formatPeriod(period) {
+      const date = new Date(period + "T00:00:00");
+      return date.toLocaleDateString(undefined, {
+        year: "numeric",
+        month: "long",
+      });
+    }
+
+    function parseErrorDetail(detail) {
+      if (typeof detail === "string") {
+        return detail;
+      }
+      if (Array.isArray(detail)) {
+        return detail
+          .map(function (item) {
+            if (typeof item === "string") return item;
+            const loc = Array.isArray(item.loc) ? item.loc.join(".") : "";
+            const msg = item.msg || JSON.stringify(item);
+            return loc ? loc + ": " + msg : msg;
+          })
+          .join("\n");
+      }
+      if (detail && typeof detail === "object") {
+        return JSON.stringify(detail);
+      }
+      return "Request failed";
+    }
+
+    async function loadHistory() {
+      historyContainer.innerHTML = '<p class="loading">Loading history…</p>';
+      try {
+        const response = await fetch(
+          "/snapshots/" + DEMO_USER_ID + "/history?limit=12"
+        );
+        if (!response.ok) {
+          const payload = await response.json().catch(function () {
+            return {};
+          });
+          throw new Error(parseErrorDetail(payload.detail) || "Failed to load history");
+        }
+        const snapshots = await response.json();
+        renderHistory(snapshots);
+      } catch (err) {
+        historyContainer.innerHTML =
+          '<p class="empty-state">Unable to load history.</p>';
+        showAlert(err.message || "Unable to load history", "error");
+      }
+    }
+
+    function renderHistory(snapshots) {
+      if (!snapshots.length) {
+        historyContainer.innerHTML =
+          '<p class="empty-state">No snapshots found for this user.</p>';
+        return;
+      }
+
+      const rows = snapshots
+        .map(function (snapshot) {
+          const assessment = snapshot.assessment || {};
+          const currency = snapshot.currency || assessment.currency || "GBP";
+          return (
+            "<tr>" +
+            "<td>" +
+            formatPeriod(snapshot.period) +
+            "</td>" +
+            "<td>" +
+            currency +
+            "</td>" +
+            "<td>" +
+            formatAmount(assessment.total_income, currency) +
+            "</td>" +
+            "<td>" +
+            formatAmount(assessment.total_expenditure, currency) +
+            "</td>" +
+            "<td>" +
+            formatAmount(assessment.disposable_income, currency) +
+            "</td>" +
+            '<td class="explanation">' +
+            escapeHtml(assessment.explanation || "") +
+            "</td>" +
+            "</tr>"
+          );
+        })
+        .join("");
+
+      historyContainer.innerHTML =
+        "<table>" +
+        "<thead>" +
+        "<tr>" +
+        "<th>Period</th>" +
+        "<th>Currency</th>" +
+        "<th>Total income</th>" +
+        "<th>Total outgoing</th>" +
+        "<th>Disposable income</th>" +
+        "<th>Explanation</th>" +
+        "</tr>" +
+        "</thead>" +
+        "<tbody>" +
+        rows +
+        "</tbody>" +
+        "</table>";
+    }
+
+    function escapeHtml(value) {
+      return String(value)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#39;");
+    }
+
+    function createItemRow(direction) {
+      const row = document.createElement("div");
+      row.className = "item-row";
+      row.dataset.direction = direction;
+
+      const description = document.createElement("input");
+      description.type = "text";
+      description.placeholder =
+        direction === "INCOME" ? "Income description" : "Expense description";
+      description.required = true;
+      description.minLength = 1;
+
+      const amount = document.createElement("input");
+      amount.type = "number";
+      amount.placeholder = "Amount";
+      amount.min = "0.01";
+      amount.step = "0.01";
+      amount.required = true;
+
+      const removeBtn = document.createElement("button");
+      removeBtn.type = "button";
+      removeBtn.className = "danger";
+      removeBtn.textContent = "Remove";
+      removeBtn.addEventListener("click", function () {
+        row.remove();
+      });
+
+      row.appendChild(description);
+      row.appendChild(amount);
+      row.appendChild(removeBtn);
+      return row;
+    }
+
+    function initForm() {
+      incomeRows.appendChild(createItemRow("INCOME"));
+      expenseRows.appendChild(createItemRow("EXPENSE"));
+    }
+
+    function collectItems() {
+      const items = [];
+      const rows = document.querySelectorAll(".item-row");
+      rows.forEach(function (row) {
+        const description = row.querySelector('input[type="text"]').value.trim();
+        const amount = row.querySelector('input[type="number"]').value;
+        if (!description && !amount) {
+          return;
+        }
+        items.push({
+          direction: row.dataset.direction,
+          description: description,
+          amount: amount,
+        });
+      });
+      return items;
+    }
+
+    function showAssessment(snapshot) {
+      const assessment = snapshot.assessment || {};
+      const currency = snapshot.currency || assessment.currency || "GBP";
+
+      document.getElementById("result-period").textContent = formatPeriod(
+        snapshot.period
+      );
+      document.getElementById("result-currency").textContent = currency;
+      document.getElementById("result-income").textContent = formatAmount(
+        assessment.total_income,
+        currency
+      );
+      document.getElementById("result-outgoing").textContent = formatAmount(
+        assessment.total_expenditure,
+        currency
+      );
+      document.getElementById("result-disposable").textContent = formatAmount(
+        assessment.disposable_income,
+        currency
+      );
+      document.getElementById("result-explanation").textContent =
+        assessment.explanation || "";
+
+      resultPanel.classList.add("visible");
+    }
+
+    document.getElementById("add-income").addEventListener("click", function () {
+      incomeRows.appendChild(createItemRow("INCOME"));
+    });
+
+    document.getElementById("add-expense").addEventListener("click", function () {
+      expenseRows.appendChild(createItemRow("EXPENSE"));
+    });
+
+    form.addEventListener("submit", async function (event) {
+      event.preventDefault();
+      clearAlert();
+
+      const items = collectItems();
+      if (!items.length) {
+        showAlert("Add at least one financial item before submitting.", "error");
+        return;
+      }
+
+      try {
+        const response = await fetch("/snapshots", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            user_id: DEMO_USER_ID,
+            items: items,
+          }),
+        });
+
+        const payload = await response.json().catch(function () {
+          return {};
+        });
+
+        if (!response.ok) {
+          throw new Error(
+            parseErrorDetail(payload.detail) ||
+              "Request failed with status " + response.status
+          );
+        }
+
+        showAlert("Snapshot submitted successfully.", "success");
+        showAssessment(payload);
+        await loadHistory();
+      } catch (err) {
+        showAlert(err.message || "Failed to submit snapshot", "error");
+      }
+    });
+
+    initForm();
+    loadHistory();
+  </script>
+</body>
+</html>
