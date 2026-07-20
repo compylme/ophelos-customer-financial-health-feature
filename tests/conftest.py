@@ -11,12 +11,16 @@ import os
 from collections.abc import Callable, Iterator
 from datetime import UTC, date, datetime
 from decimal import Decimal
+from unittest.mock import MagicMock, patch
 from uuid import UUID, uuid4
 
 import pytest
+from fastapi.testclient import TestClient
 from sqlalchemy import Engine, create_engine
 from sqlalchemy.orm import Session
 
+from app.api.dependencies import get_financial_health_service
+from app.main import app
 from app.models.models import (
     Base,
     Direction,
@@ -27,6 +31,7 @@ from app.models.models import (
 )
 from app.repositories.snapshot_repository import SnapshotRepository
 from app.schemas.financial_health import FinancialItemInput, SubmitSnapshotRequest
+from app.services.financial_health_service import FinancialHealthService
 
 # Separate DB on the same Postgres instance — never points at the dev database.
 # Override via TEST_DATABASE_URL for CI or non-local Postgres.
@@ -34,6 +39,15 @@ TEST_DATABASE_URL = os.environ.get(
     "TEST_DATABASE_URL",
     "postgresql+psycopg://admin@localhost:5432/financial_assessment_test",
 )
+
+# Deterministic values for in-memory API route fixtures.
+API_USER_ID = UUID("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa")
+API_SNAPSHOT_ID = UUID("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb")
+API_INCOME_ITEM_ID = UUID("cccccccc-cccc-cccc-cccc-cccccccccccc")
+API_EXPENSE_ITEM_ID = UUID("dddddddd-dddd-dddd-dddd-dddddddddddd")
+API_ASSESSMENT_ID = UUID("eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee")
+API_PERIOD = date(2026, 7, 1)
+API_SUBMITTED_AT = datetime(2026, 7, 15, 12, 0, 0, tzinfo=UTC)
 
 
 # ---------------------------------------------------------------------------
@@ -322,3 +336,96 @@ def uncommitted_snapshot(
         ],
         assessment=assessment_factory(),
     )
+
+
+# ---------------------------------------------------------------------------
+# API route test fixtures (no database)
+# ---------------------------------------------------------------------------
+
+
+@pytest.fixture
+def in_memory_snapshot_factory() -> Callable[..., MonthlySnapshot]:
+    """Build a fully-populated MonthlySnapshot without a database session."""
+
+    def _create(
+        *,
+        snapshot_id: UUID = API_SNAPSHOT_ID,
+        user_id: UUID = API_USER_ID,
+        period: date = API_PERIOD,
+    ) -> MonthlySnapshot:
+        return MonthlySnapshot(
+            id=snapshot_id,
+            user_id=user_id,
+            period=period,
+            submitted_at=API_SUBMITTED_AT,
+            financial_items=[
+                FinancialItem(
+                    id=API_INCOME_ITEM_ID,
+                    snapshot_id=snapshot_id,
+                    direction=Direction.INCOME,
+                    description="Salary",
+                    amount=Decimal("2500.00"),
+                ),
+                FinancialItem(
+                    id=API_EXPENSE_ITEM_ID,
+                    snapshot_id=snapshot_id,
+                    direction=Direction.EXPENSE,
+                    description="Rent",
+                    amount=Decimal("1500.00"),
+                ),
+            ],
+            assessment=MonthlyAssessment(
+                id=API_ASSESSMENT_ID,
+                snapshot_id=snapshot_id,
+                total_income=Decimal("2500.00"),
+                total_expenditure=Decimal("1500.00"),
+                disposable_income=Decimal("1000.00"),
+                status="HEALTHY",
+                explanation="Test explanation",
+            ),
+        )
+
+    return _create
+
+
+@pytest.fixture
+def sample_snapshot(
+    in_memory_snapshot_factory: Callable[..., MonthlySnapshot],
+) -> MonthlySnapshot:
+    return in_memory_snapshot_factory()
+
+
+@pytest.fixture
+def valid_submit_payload_factory() -> Callable[..., dict]:
+    def _create(user_id: UUID = API_USER_ID) -> dict:
+        return {
+            "user_id": str(user_id),
+            "items": [
+                {
+                    "direction": "INCOME",
+                    "description": "Salary",
+                    "amount": "2500.00",
+                },
+                {
+                    "direction": "EXPENSE",
+                    "description": "Rent",
+                    "amount": "1500.00",
+                },
+            ],
+        }
+
+    return _create
+
+
+@pytest.fixture
+def mock_service() -> MagicMock:
+    return MagicMock(spec=FinancialHealthService)
+
+
+@pytest.fixture
+def client(mock_service: MagicMock) -> Iterator[TestClient]:
+    app.dependency_overrides[get_financial_health_service] = lambda: mock_service
+    with patch("app.main.seed_database"):
+        with TestClient(app) as test_client:
+            yield test_client
+    app.dependency_overrides.clear()
