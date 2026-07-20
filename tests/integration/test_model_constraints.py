@@ -6,12 +6,13 @@ They do not exercise SnapshotRepository.
 
 from datetime import date
 from decimal import Decimal
+from uuid import uuid4
 
 import pytest
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from app.models.models import Direction, MonthlySnapshot
+from app.models.models import Direction, MonthlySnapshot, User
 
 
 class TestMonthlySnapshotUniqueConstraint:
@@ -95,5 +96,74 @@ class TestFinancialItemAmountCheckConstraint:
                     total_income=Decimal("-0.01"),
                     total_expenditure=Decimal("0"),
                 ),
+            )
+            db_session.flush()
+
+
+class TestUserCurrencyConstraint:
+    def test_rejects_unsupported_currency(
+        self,
+        db_session: Session,
+    ) -> None:
+        with pytest.raises(IntegrityError):
+            db_session.add(
+                User(
+                    name="Bad Currency User",
+                    email=f"{uuid4()}@test.com",
+                    country_code="GB",
+                    currency="XXX",
+                )
+            )
+            db_session.flush()
+
+
+class TestUserCountryCodeConstraint:
+    def test_rejects_unsupported_country_code(
+        self,
+        db_session: Session,
+    ) -> None:
+        with pytest.raises(IntegrityError):
+            db_session.add(
+                User(
+                    name="Bad Country User",
+                    email=f"{uuid4()}@test.com",
+                    country_code="ZZ",
+                    currency="GBP",
+                )
+            )
+            db_session.flush()
+
+
+class TestSnapshotCurrencyConstraint:
+    def test_rejects_unsupported_currency(
+        self,
+        db_session: Session,
+        persisted_user,
+        snapshot_factory,
+        assessment_factory,
+    ) -> None:
+        with pytest.raises(IntegrityError):
+            snapshot_factory(
+                user=persisted_user,
+                period=date(2026, 8, 1),
+                currency="XXX",
+                assessment=assessment_factory(currency="GBP"),
+            )
+            db_session.flush()
+
+
+class TestAssessmentCurrencyConstraint:
+    def test_rejects_unsupported_currency(
+        self,
+        db_session: Session,
+        persisted_user,
+        snapshot_factory,
+        assessment_factory,
+    ) -> None:
+        with pytest.raises(IntegrityError):
+            snapshot_factory(
+                user=persisted_user,
+                period=date(2026, 8, 1),
+                assessment=assessment_factory(currency="XXX"),
             )
             db_session.flush()

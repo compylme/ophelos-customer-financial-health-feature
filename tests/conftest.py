@@ -88,8 +88,18 @@ def repository(db_session: Session) -> SnapshotRepository:
 
 @pytest.fixture
 def user_factory(db_session: Session) -> Callable[..., User]:
-    def _create(name: str = "Test User", email: str | None = None) -> User:
-        user = User(name=name, email=email or f"{uuid4()}@test.com")
+    def _create(
+        name: str = "Test User",
+        email: str | None = None,
+        country_code: str = "GB",
+        currency: str = "GBP",
+    ) -> User:
+        user = User(
+            name=name,
+            email=email or f"{uuid4()}@test.com",
+            country_code=country_code,
+            currency=currency,
+        )
         db_session.add(user)
         db_session.flush()
         return user
@@ -166,6 +176,7 @@ def assessment_factory() -> Callable[..., MonthlyAssessment]:
         disposable_income: Decimal | None = None,
         status: str = "HEALTHY",
         explanation: str = "Test explanation",
+        currency: str = "GBP",
     ) -> MonthlyAssessment:
         if disposable_income is None:
             disposable_income = total_income - total_expenditure
@@ -175,6 +186,7 @@ def assessment_factory() -> Callable[..., MonthlyAssessment]:
             disposable_income=disposable_income,
             status=status,
             explanation=explanation,
+            currency=currency,
         )
 
     return _create
@@ -192,6 +204,7 @@ def snapshot_factory(
         submitted_at: datetime | None = None,
         financial_items: list[FinancialItem] | None = None,
         assessment: MonthlyAssessment | None = None,
+        currency: str = "GBP",
     ) -> MonthlySnapshot:
         if financial_items is None:
             financial_items = [
@@ -207,12 +220,13 @@ def snapshot_factory(
                 ),
             ]
         if assessment is None:
-            assessment = assessment_factory()
+            assessment = assessment_factory(currency=currency)
 
         snapshot = MonthlySnapshot(
             user_id=user.id,
             period=period,
             submitted_at=submitted_at or datetime.now(UTC),
+            currency=currency,
             financial_items=financial_items,
             assessment=assessment,
         )
@@ -322,6 +336,7 @@ def uncommitted_snapshot(
         user_id=persisted_user.id,
         period=date(2026, 7, 1),
         submitted_at=datetime.now(UTC),
+        currency="GBP",
         financial_items=[
             financial_item_factory(
                 direction=Direction.INCOME,
@@ -352,12 +367,14 @@ def in_memory_snapshot_factory() -> Callable[..., MonthlySnapshot]:
         snapshot_id: UUID = API_SNAPSHOT_ID,
         user_id: UUID = API_USER_ID,
         period: date = API_PERIOD,
+        currency: str = "GBP",
     ) -> MonthlySnapshot:
         return MonthlySnapshot(
             id=snapshot_id,
             user_id=user_id,
             period=period,
             submitted_at=API_SUBMITTED_AT,
+            currency=currency,
             financial_items=[
                 FinancialItem(
                     id=API_INCOME_ITEM_ID,
@@ -382,6 +399,7 @@ def in_memory_snapshot_factory() -> Callable[..., MonthlySnapshot]:
                 disposable_income=Decimal("1000.00"),
                 status="HEALTHY",
                 explanation="Test explanation",
+                currency=currency,
             ),
         )
 

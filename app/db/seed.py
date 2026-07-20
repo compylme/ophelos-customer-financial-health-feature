@@ -323,6 +323,8 @@ def seed_database() -> None:
             id=DEMO_USER_ID,
             name=DEMO_USER_NAME,
             email=DEMO_USER_EMAIL,
+            country_code="GB",
+            currency="GBP",
         )
         session.add(user)
         session.flush()
@@ -331,13 +333,14 @@ def seed_database() -> None:
         periods = _historic_periods(len(_MONTHLY_ITEMS))
 
         for period, items in zip(periods, _MONTHLY_ITEMS, strict=True):
-            assessment_result = service.calculate_assessment(items)
+            assessment_result = service.calculate_assessment(items, currency="GBP")
             snapshot = MonthlySnapshot(
                 user_id=user.id,
                 period=period,
                 submitted_at=datetime(
                     period.year, period.month, 15, 10, 0, 0, tzinfo=UTC
                 ),
+                currency="GBP",
                 financial_items=[
                     FinancialItem(
                         direction=item.direction,
@@ -352,6 +355,7 @@ def seed_database() -> None:
                     disposable_income=assessment_result.disposable_income,
                     status=assessment_result.status.value,
                     explanation=assessment_result.explanation,
+                    currency="GBP",
                 ),
             )
             session.add(snapshot)

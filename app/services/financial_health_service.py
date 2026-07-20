@@ -3,18 +3,21 @@ from datetime import UTC, date, datetime
 from decimal import Decimal
 from uuid import UUID
 
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.exceptions import (
     InvalidHistoryLimit,
     SnapshotAlreadyExists,
     SnapshotNotFound,
+    UserNotFound,
 )
 from app.models.models import (
     Direction,
     FinancialItem,
     MonthlyAssessment,
     MonthlySnapshot,
+    User,
 )
 from app.repositories.snapshot_repository import SnapshotRepository
 from app.schemas.financial_health import (
@@ -28,6 +31,18 @@ logger = logging.getLogger(__name__)
 
 CRITICAL_THRESHOLD = Decimal("0.10")
 MANAGEABLE_THRESHOLD = Decimal("0.25")
+
+SUPPORTED_COUNTRY_CURRENCIES = {"GB": "GBP", "FR": "EUR", "US": "USD"}
+CURRENCY_SYMBOLS = {"GBP": "\u00a3", "EUR": "\u20ac", "USD": "$"}
+
+
+def format_currency(amount: Decimal, currency: str) -> str:
+    symbol = CURRENCY_SYMBOLS[currency]
+    formatted = f"{abs(amount):,.2f}"
+    if amount < 0:
+        return f"-{symbol}{formatted}"
+    return f"{symbol}{formatted}"
+
 
 _EXPLANATION_TEMPLATES: dict[AffordabilityStatus, str] = {
     AffordabilityStatus.DEFICIT: (
@@ -81,18 +96,27 @@ class FinancialHealthService:
     def submit_snapshot(self, request: SubmitSnapshotRequest) -> MonthlySnapshot:
         period = date.today().replace(day=1)
 
+        user = self._session.scalar(
+            select(User).where(User.id == request.user_id)
+        )
+        if user is None:
+            raise UserNotFound(f"User {request.user_id} not found")
+
         if self._repository.exists_for_period(request.user_id, period):
             raise SnapshotAlreadyExists(
                 f"A snapshot already exists for user {request.user_id}"
                 f" for the period {period.strftime('%B %Y')}"
             )
 
-        assessment_result = self.calculate_assessment(request.items)
+        assessment_result = self.calculate_assessment(
+            request.items, currency=user.currency
+        )
 
         snapshot = MonthlySnapshot(
             user_id=request.user_id,
             period=period,
             submitted_at=datetime.now(UTC),
+            currency=user.currency,
             financial_items=[
                 FinancialItem(
                     direction=item.direction,
@@ -107,6 +131,7 @@ class FinancialHealthService:
                 disposable_income=assessment_result.disposable_income,
                 status=assessment_result.status.value,
                 explanation=assessment_result.explanation,
+                currency=user.currency,
             ),
         )
 
@@ -130,7 +155,7 @@ class FinancialHealthService:
         return snapshot
 
     def calculate_assessment(
-        self, items: list[FinancialItemInput]
+        self, items: list[FinancialItemInput], currency: str
     ) -> AssessmentResult:
         total_income = sum(
             (item.amount for item in items if item.direction == Direction.INCOME),
@@ -166,9 +191,9 @@ class FinancialHealthService:
             shortfall_percentage = Decimal("0.0")
 
         explanation = _EXPLANATION_TEMPLATES[status].format(
-            total_income=total_income,
-            total_expenditure=total_expenditure,
-            disposable_income=disposable_income,
+            total_income=format_currency(total_income, currency),
+            total_expenditure=format_currency(total_expenditure, currency),
+            disposable_income=format_currency(disposable_income, currency),
             ratio=ratio_percentage,
             shortfall_percentage=shortfall_percentage,
         )
